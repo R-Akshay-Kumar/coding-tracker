@@ -1,0 +1,181 @@
+/* RESET & FONTS */
+:root {
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #213547;
+  background-color: #f0f2f5; /* Light gray background */
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* MAIN CONTAINER */
+.container {
+  max-width: 500px;
+  margin: 40px auto;
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); /* Soft shadow */
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 30px;
+  letter-spacing: -0.5px;
+}
+
+/* CARDS / SECTIONS */
+.card {
+  background: #ffffff;
+  text-align: left;
+  margin-bottom: 25px;
+}
+
+.card h3 {
+  font-size: 1.1rem;
+  color: #444;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+/* INPUTS & LABELS */
+/* INPUTS & LABELS */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+input[type="text"], 
+input[type="file"] {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  
+  /* --- THE FIX IS HERE --- */
+  background-color: #ffffff; /* Force white background */
+  color: #1a1a1a;            /* Force dark text */
+  /* ----------------------- */
+  
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+/* Input Focus Effect */
+input[type="text"]:focus {
+  border-color: #646cff;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(100, 108, 255, 0.1);
+  background-color: #fff;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 8px;
+}
+
+/* FILE UPLOAD SPECIFIC */
+input[type="file"] {
+  background: white;
+  padding: 10px;
+  border: 1px dashed #ccc;
+  cursor: pointer;
+}
+
+input[type="file"]:hover {
+  background-color: #f9f9ff;
+  border-color: #646cff;
+}
+
+/* GENERATE BUTTON */
+.generate-btn {
+  width: 100%;
+  padding: 15px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #646cff 0%, #535bf2 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.3s ease;
+  margin-top: 10px;
+}
+
+.generate-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(83, 91, 242, 0.4);
+}
+
+.generate-btn:active {
+  transform: translateY(0);
+}
+
+.generate-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* SUCCESS / DOWNLOAD AREA */
+.result-area {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #eefcf1; /* Light green bg */
+  border: 1px solid #c6f6d5;
+  border-radius: 12px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.result-area h3 {
+  color: #2f855a;
+  margin-top: 0;
+}
+
+.download-btn {
+  display: inline-block;
+  background-color: #2f855a;
+  color: white;
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.download-btn:hover {
+  background-color: #276749;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
