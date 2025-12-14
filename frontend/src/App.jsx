@@ -40,7 +40,7 @@ function App() {
     setLoading(true)
     setDownloadUrl(null)
     setProgress(0)
-    setStatusText("Uploading file...")
+    setStatusText("Uploading file (this takes few minutes)...")
 
     const formData = new FormData()
     formData.append("file", file)
