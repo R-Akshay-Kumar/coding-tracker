@@ -45,7 +45,7 @@ function App() {
     ccProblems.forEach(p => { if(p) formData.append("cc_problems", p) })
 
     try {
-      const response = await axios.post("http://127.0.0.1:8000/check-status", formData, {
+      const response = await axios.post("https://coding-tracker-m505.onrender.com/check-status", formData, {
         responseType: 'blob',
       })
       const url = window.URL.createObjectURL(new Blob([response.data]))
