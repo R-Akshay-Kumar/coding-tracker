@@ -1,20 +1,19 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List
 import pandas as pd
 import shutil
 import os
 from datetime import datetime
 
 # Import your engines
-# Ensure cf_checker.py, lc_checker.py, and cc_checker.py are in the same folder
 from cf_checker import check_codeforces_status
 from lc_checker import check_leetcode_status
 from cc_checker import check_codechef_status
 
 app = FastAPI()
 
-# --- ALLOW FRONTEND TO TALK TO BACKEND ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,90 +22,108 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- HELPER: SIMPLIFY STATUS ---
 def simplify_status(detailed_status):
-    # Only keep "Solved". Everything else becomes "Not Solved".
-    if detailed_status == "Solved":
-        return "Solved"
-    else:
-        return "Not Solved"
+    return "Solved" if detailed_status == "Solved" else "Not Solved"
 
 @app.post("/check-status")
 def check_status(
     file: UploadFile = File(...),
-    cf_problem: str = Form(None),
-    lc_problem: str = Form(None),
-    cc_problem: str = Form(None)
+    cf_problems: List[str] = Form([]), # Accepting a LIST of problems now
+    lc_problems: List[str] = Form([]),
+    cc_problems: List[str] = Form([])
 ):
-    # 1. Save the uploaded file temporarily
+    # 1. Save File
     temp_filename = f"temp_{file.filename}"
     with open(temp_filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    print(f"Processing file: {temp_filename}")
-
-    # 2. Read the file (Robust Mode)
     try:
+        # 2. Read & Clean
         if temp_filename.endswith('.csv'):
              df = pd.read_csv(temp_filename)
         else:
-             # FIX: Explicitly use openpyxl engine
              df = pd.read_excel(temp_filename, engine='openpyxl')
         
-        # CLEANING: Convert all data to strings and remove "NaN" (empty cells)
         df = df.astype(str)
-        df.replace("nan", "", inplace=True)
-        df.replace("NaN", "", inplace=True)
+        df.replace(["nan", "NaN"], "", inplace=True)
+        
+        # Identify User ID Columns (to use them, then delete them)
+        # We try to match variations like "CODEFORCES" or "Codeforces"
+        cols = {c.upper(): c for c in df.columns}
+        cf_col = cols.get('CODEFORCES')
+        lc_col = cols.get('LEETCODE')
+        cc_col = cols.get('CODECHEF')
+
+        # 3. Process Students
+        total_students = len(df)
+        print(f"Processing {total_students} students...")
+
+        # Initialize Score Column
+        df['Score'] = 0
+
+        for index, row in df.iterrows():
+            print(f"Checking Student {index + 1} / {total_students}...") 
+            
+            current_score = 0
+            
+            # --- Check Multiple Codeforces Problems ---
+            if cf_col:
+                uid = row[cf_col].strip()
+                if uid:
+                    for prob in cf_problems:
+                        if not prob: continue 
+                        status = simplify_status(check_codeforces_status(uid, prob))
+                        df.at[index, f'CF: {prob}'] = status
+                        if status == "Solved": current_score += 1
+                else:
+                    for prob in cf_problems: 
+                        if prob: df.at[index, f'CF: {prob}'] = "No ID"
+
+            # --- Check Multiple LeetCode Problems ---
+            if lc_col:
+                uid = row[lc_col].strip()
+                if uid:
+                    for prob in lc_problems:
+                        if not prob: continue
+                        status = simplify_status(check_leetcode_status(uid, prob))
+                        df.at[index, f'LC: {prob}'] = status
+                        if status == "Solved": current_score += 1
+                else:
+                    for prob in lc_problems:
+                        if prob: df.at[index, f'LC: {prob}'] = "No ID"
+
+            # --- Check Multiple CodeChef Problems ---
+            if cc_col:
+                uid = row[cc_col].strip()
+                if uid:
+                    for prob in cc_problems:
+                        if not prob: continue
+                        status = simplify_status(check_codechef_status(uid, prob))
+                        df.at[index, f'CC: {prob}'] = status
+                        if status == "Solved": current_score += 1
+                else:
+                    for prob in cc_problems:
+                        if prob: df.at[index, f'CC: {prob}'] = "No ID"
+
+            # Save the total score for this student
+            df.at[index, 'Score'] = current_score
+
+        # 4. Cleanup: Remove ID Columns
+        columns_to_remove = [c for c in [cf_col, lc_col, cc_col] if c]
+        df.drop(columns=columns_to_remove, inplace=True)
+
+        # 5. Reorder: Put 'Score' right after Name/Roll Number
+        cols = list(df.columns)
+        cols.remove('Score')
+        insert_pos = 3 if len(cols) >= 2 else 1
+        cols.insert(insert_pos, 'Score')
+        df = df[cols]
 
     except Exception as e:
-        print(f"CRASH READING FILE: {e}")
-        return {"error": f"Could not read file: {str(e)}"}
+        print(f"ERROR: {e}")
+        return {"error": f"Server Error: {str(e)}"}
 
-    # 3. Create Result Columns
-    if cf_problem: df[f'CF: {cf_problem}'] = "Pending"
-    if lc_problem: df[f'LC: {lc_problem}'] = "Pending"
-    if cc_problem: df[f'CC: {cc_problem}'] = "Pending"
-
-    # 4. RUN THE LOGIC (Loop through students)
-    total_students = len(df)
-    for index, row in df.iterrows():
-        print(f"Checking Student {index + 1}/{total_students}...")
-        
-        # -- Codeforces --
-        if cf_problem:
-            uid = row.get('CODEFORCES')
-            if uid and uid.strip().lower() != 'nan' and uid.strip() != '':
-                res = check_codeforces_status(uid.strip(), cf_problem)
-                df.at[index, f'CF: {cf_problem}'] = simplify_status(res)
-            else:
-                df.at[index, f'CF: {cf_problem}'] = "No ID"
-        
-        # -- LeetCode --
-        if lc_problem:
-            uid = row.get('LEETCODE')
-            if uid and uid.strip().lower() != 'nan' and uid.strip() != '':
-                res = check_leetcode_status(uid.strip(), lc_problem)
-                df.at[index, f'LC: {lc_problem}'] = simplify_status(res)
-            else:
-                df.at[index, f'LC: {lc_problem}'] = "No ID"
-
-        # -- CodeChef --
-        if cc_problem:
-            uid = row.get('CODECHEF')
-            if uid and uid.strip().lower() != 'nan' and uid.strip() != '':
-                res = check_codechef_status(uid.strip(), cc_problem)
-                df.at[index, f'CC: {cc_problem}'] = simplify_status(res)
-            else:
-                df.at[index, f'CC: {cc_problem}'] = "No ID"
-
-    # 5. Save the result
+    # 6. Save & Return
     output_filename = f"processed_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
     df.to_excel(output_filename, index=False)
-    print(f"Success! Saved to {output_filename}")
-
-    # 6. Return the file
-    return FileResponse(
-        path=output_filename, 
-        filename=output_filename, 
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    return FileResponse(output_filename, filename=output_filename)
