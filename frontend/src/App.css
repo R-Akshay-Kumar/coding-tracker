@@ -1,10 +1,10 @@
-/* RESET & FONTS */
+
 :root {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: #213547;
-  background-color: #f0f2f5; /* Light gray background */
+  background-color: #f0f2f5; 
 }
 
 body {
@@ -29,7 +29,7 @@ body {
   background: #ffffff;
   padding: 40px;
   border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); /* Soft shadow */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); 
 }
 
 h1 {
@@ -40,7 +40,7 @@ h1 {
   letter-spacing: -0.5px;
 }
 
-/* CARDS / SECTIONS */
+/* CARDS */
 .card {
   background: #ffffff;
   text-align: left;
@@ -55,8 +55,7 @@ h1 {
   padding-bottom: 10px;
 }
 
-/* INPUTS & LABELS */
-/* INPUTS & LABELS */
+/* INPUTS */
 .input-group {
   margin-bottom: 20px;
 }
@@ -76,17 +75,12 @@ input[type="file"] {
   font-size: 1rem;
   border: 1px solid #ddd;
   border-radius: 8px;
-  
-  /* --- THE FIX IS HERE --- */
-  background-color: #ffffff; /* Force white background */
-  color: #1a1a1a;            /* Force dark text */
-  /* ----------------------- */
-  
+  background-color: #ffffff; 
+  color: #1a1a1a;           
   transition: all 0.3s ease;
   box-sizing: border-box;
 }
 
-/* Input Focus Effect */
 input[type="text"]:focus {
   border-color: #646cff;
   outline: none;
@@ -100,7 +94,7 @@ input[type="text"]:focus {
   margin-top: 8px;
 }
 
-/* FILE UPLOAD SPECIFIC */
+/* FILE UPLOAD */
 input[type="file"] {
   background: white;
   padding: 10px;
@@ -144,11 +138,11 @@ input[type="file"]:hover {
   box-shadow: none;
 }
 
-/* SUCCESS / DOWNLOAD AREA */
+/* SUCCESS AREA */
 .result-area {
   margin-top: 30px;
   padding: 20px;
-  background-color: #eefcf1; /* Light green bg */
+  background-color: #eefcf1; 
   border: 1px solid #c6f6d5;
   border-radius: 12px;
   animation: fadeIn 0.5s ease-in-out;
@@ -174,8 +168,43 @@ input[type="file"]:hover {
   background-color: #276749;
 }
 
-/* Animation */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.dynamic-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.icon-btn.remove {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 5px;
+  font-weight: bold;
+}
+.icon-btn.remove:hover {
+  color: #e03131;
+}
+
+/* The '+ Add Another' button */
+.text-btn.add {
+  background: none;
+  border: none;
+  color: #646cff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 5px 0;
+  margin-top: -5px;
+  display: inline-block;
+}
+.text-btn.add:hover {
+  text-decoration: underline;
 }
