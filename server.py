@@ -6,6 +6,7 @@ import pandas as pd
 import shutil
 import os
 import uuid
+import time
 from datetime import datetime
 
 from cf_checker import check_codeforces_status
@@ -55,7 +56,8 @@ def process_file_task(job_id: str, filepath: str, cf_problems, lc_problems, cc_p
         # 2. Loop Through Students
         for index, row in df.iterrows():
             jobs[job_id]["current"] = index + 1
-            
+
+            time.sleep(2)
             current_score = 0
             
             # CF
@@ -152,3 +154,4 @@ def download_file(job_id: str):
     if job and job["status"] == "completed":
         return FileResponse(job["filename"], filename="Student_Report.xlsx")
     return {"error": "File not ready"}
+
