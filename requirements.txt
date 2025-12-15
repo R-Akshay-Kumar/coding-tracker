@@ -6,3 +6,4 @@ beautifulsoup4
 python-multipart
 python-dotenv
 openpyxl
+pymongo
