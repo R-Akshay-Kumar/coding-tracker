@@ -28,8 +28,8 @@ origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -222,4 +222,5 @@ def view_report(report_id: str):
         return report
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid Report ID")
+
 
