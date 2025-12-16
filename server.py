@@ -24,12 +24,7 @@ from cc_checker import check_codechef_status
 app = FastAPI()
 
 # --- FIX CORS ERROR (Trust Vercel & Render) ---
-origins = [
-    "http://localhost:5173",             
-    "http://127.0.0.1:5173",             
-    "https://coding-tracker-tau.vercel.app",   # YOUR VERCEL FRONTEND
-    "https://coding-tracker-backend.onrender.com" # YOUR RENDER BACKEND
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -227,3 +222,4 @@ def view_report(report_id: str):
         return report
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid Report ID")
+
