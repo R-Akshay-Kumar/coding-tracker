@@ -7,6 +7,7 @@ import shutil
 import os
 import uuid
 import time
+import random
 from datetime import datetime
 import pymongo
 from bson import ObjectId
@@ -67,7 +68,7 @@ def simplify_status(detailed_status):
 # --- WORKER FUNCTION ---
 def process_file_task(job_id: str, filepath: str, cf_problems, lc_problems, cc_problems):
     try:
-        print(f"📂 Processing file: {filepath}")
+        print(f" Processing file: {filepath}")
         
         # 1. Read File
         if filepath.endswith('.csv'):
@@ -173,6 +174,92 @@ def process_file_task(job_id: str, filepath: str, cf_problems, lc_problems, cc_p
         jobs[job_id]["status"] = "failed"
         jobs[job_id]["error"] = str(e)
 
+
+def process_refresh_task(job_id: str, report_id: str):
+    try:
+        print(f"Refreshing Report ID: {report_id}")
+
+        # 1. Fetch Existing Report
+        if reports_collection is None:
+            raise Exception("Database not connected")
+
+        report = reports_collection.find_one({"_id": ObjectId(report_id)})
+        if not report:
+            raise Exception("Report not found in DB")
+
+        student_data_list = report.get("data", [])
+        total_students = len(student_data_list)
+
+        # 2. Identify Problems from the first student record
+        if total_students > 0:
+            first_row = student_data_list[0]
+            cf_problems = [k.split(": ")[1] for k in first_row.keys() if k.startswith("CF: ")]
+            lc_problems = [k.split(": ")[1] for k in first_row.keys() if k.startswith("LC: ")]
+            cc_problems = [k.split(": ")[1] for k in first_row.keys() if k.startswith("CC: ")]
+        else:
+            cf_problems, lc_problems, cc_problems = [], [], []
+
+        jobs[job_id]["total"] = total_students
+        jobs[job_id]["status"] = "processing"
+
+        updated_results = []
+
+        # 3. Re-Crawl Loop
+        for index, student in enumerate(student_data_list):
+            jobs[job_id]["current"] = index + 1
+            time.sleep(0.5) # Polite Delay
+            current_score = 0
+
+            # --- CHECK CODEFORCES ---
+            cf_handle = student.get("CODEFORCES") or student.get("codeforces") or ""
+            if cf_handle:
+                for prob in cf_problems:
+                    status = simplify_status(check_codeforces_status(str(cf_handle), prob))
+                    student[f'CF: {prob}'] = status
+                    if status == "Solved": current_score += 1
+
+            # --- CHECK LEETCODE ---
+            lc_handle = student.get("LEETCODE") or student.get("leetcode") or ""
+            if lc_handle:
+                for prob in lc_problems:
+                    status = simplify_status(check_leetcode_status(str(lc_handle), prob))
+                    student[f'LC: {prob}'] = status
+                    if status == "Solved": current_score += 1
+
+            # --- CHECK CODECHEF ---
+            cc_handle = student.get("CODECHEF") or student.get("codechef") or ""
+            if cc_handle:
+                for prob in cc_problems:
+                    raw_status = check_codechef_status(str(cc_handle), prob)
+                    status = "Solved" if raw_status == "Solved" else "Not Solved"
+                    student[f'CC: {prob}'] = status
+                    if status == "Solved": current_score += 1
+
+            # Update Score
+            student['Score'] = current_score
+            updated_results.append(student)
+            print(f"   updated {index+1}/{total_students}...")
+
+        # 4. Update Database
+        reports_collection.update_one(
+            {"_id": ObjectId(report_id)},
+            {
+                "$set": {
+                    "data": updated_results,
+                    "last_updated": datetime.now()
+                }
+            }
+        )
+        
+        jobs[job_id]["status"] = "completed"
+        jobs[job_id]["report_id"] = report_id
+        print("✅ Refresh Complete")
+
+    except Exception as e:
+        print(f" Refresh Error: {e}")
+        jobs[job_id]["status"] = "failed"
+        jobs[job_id]["error"] = str(e)
+
 # --- API ENDPOINTS ---
 
 @app.post("/start-check")
@@ -223,4 +310,42 @@ def view_report(report_id: str):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid Report ID")
 
+
+@app.post("/refresh-report/{report_id}")
+async def refresh_report(report_id: str, background_tasks: BackgroundTasks):
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {
+        "status": "queued",
+        "current": 0,
+        "total": 0
+    }
+    background_tasks.add_task(process_refresh_task, job_id, report_id)
+    return {"job_id": job_id}
+
+@app.get("/download-report/{report_id}")
+def download_existing_report(report_id: str):
+    if reports_collection is None:
+        raise HTTPException(status_code=500, detail="Database not connected")
+    
+    try:
+        report = reports_collection.find_one({"_id": ObjectId(report_id)})
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        
+        df = pd.DataFrame(report["data"])
+        
+        cols = list(df.columns)
+        if 'Score' in cols:
+            cols.remove('Score')
+            cols.insert(2, 'Score') 
+            df = df[cols]
+
+        filename = f"Report_{report_id}.xlsx"
+        df.to_excel(filename, index=False)
+        
+        return FileResponse(filename, filename=f"Student_Report_{report_id[-4:]}.xlsx")
+
+    except Exception as e:
+        print(f"Download Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
