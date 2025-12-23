@@ -156,11 +156,13 @@ def process_file_task(job_id: str, filepath: str, cf_problems, lc_problems, cc_p
 
         # 4. Save Excel
         df_result = pd.DataFrame(student_results)
-        cols = list(df_result.columns)
-        if 'Score' in cols:
-            cols.remove('Score')
-            cols.insert(2, 'Score') 
-            df_result = df_result[cols]
+        all_cols = list(df_result.columns)
+        problem_cols = [c for c in all_cols if c.startswith("CF: ") or c.startswith("LC: ") or c.startswith("CC: ")]
+        score_col = ['Score'] if 'Score' in all_cols else []
+        exclude_set = set(problem_cols + score_col)
+        input_cols = [c for c in all_cols if c not in exclude_set]
+        final_cols = input_cols + score_col + problem_cols
+        df_result = df_result[final_cols]
 
         output_filename = f"processed_{job_id}.xlsx"
         df_result.to_excel(output_filename, index=False)
@@ -334,11 +336,16 @@ def download_existing_report(report_id: str):
         
         df = pd.DataFrame(report["data"])
         
-        cols = list(df.columns)
-        if 'Score' in cols:
-            cols.remove('Score')
-            cols.insert(2, 'Score') 
-            df = df[cols]
+        all_cols = list(df.columns)
+        
+        problem_cols = [c for c in all_cols if c.startswith("CF: ") or c.startswith("LC: ") or c.startswith("CC: ")]
+        score_col = ['Score'] if 'Score' in all_cols else []
+        
+        exclude_set = set(problem_cols + score_col)
+        input_cols = [c for c in all_cols if c not in exclude_set]
+        
+        final_cols = input_cols + score_col + problem_cols
+        df = df[final_cols]
 
         filename = f"Report_{report_id}.xlsx"
         df.to_excel(filename, index=False)
@@ -348,4 +355,5 @@ def download_existing_report(report_id: str):
     except Exception as e:
         print(f"Download Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
