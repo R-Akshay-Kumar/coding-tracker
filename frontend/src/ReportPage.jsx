@@ -1,22 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Eye, XCircle, ChefHat, CodeXml, BarChart3 } from 'lucide-react';
+import axios from 'axios';
+import { Eye, XCircle, ChefHat, CodeXml, BarChart3, RefreshCw, Loader2, Download } from 'lucide-react';
 import './App.css';
 
 const ReportPage = () => {
   const { id } = useParams();
+
+  // --- 1. DEFINE THE API URL
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+  // --- 2. STATE VARIABLES ---
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState(0);
+  const [refreshJobId, setRefreshJobId] = useState(null);
+  const [refreshText, setRefreshText] = useState("");
 
-  // --- 1. DEFINE THE API URL (Local vs Cloud) ---
-  const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+  // --- 3. EFFECTS ---
 
+  // Effect A: Fetch the Report initially
   useEffect(() => {
     const fetchReport = async () => {
         try {
-          // --- UPDATED: Use Dynamic URL ---
           const response = await fetch(`${API_BASE_URL}/view-report/${id}`);
           if (!response.ok) throw new Error("Report not found");
           const data = await response.json();
@@ -33,16 +42,52 @@ const ReportPage = () => {
         }
     };
     fetchReport();
-  }, [id]);
+  }, [id, API_BASE_URL]);
 
-  // --- HELPER: Find data regardless of Case (Name vs NAME) ---
+  // Effect B: Poll for Refresh Progress
+  useEffect(() => {
+    let interval;
+    if (refreshJobId && refreshing) {
+      interval = setInterval(async () => {
+        try {
+          const res = await axios.get(`${API_BASE_URL}/progress/${refreshJobId}`);
+          const data = res.data;
+
+          if (data.status === "processing" || data.status === "queued") {
+            const current = data.current;
+            const total = data.total;
+            if (total > 0) {
+              const pct = Math.round((current / total) * 100);
+              setRefreshProgress(pct);
+              setRefreshText(`Checking ${current} / ${total}...`);
+            }
+          } else if (data.status === "completed") {
+            clearInterval(interval);
+            setRefreshing(false);
+            setRefreshJobId(null);
+            alert("Report Updated Successfully!");
+            window.location.reload(); 
+          } else if (data.status === "failed") {
+            alert("Refresh Failed: " + data.error);
+            setRefreshing(false);
+            clearInterval(interval);
+          }
+        } catch (err) {
+          console.error("Polling error", err);
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [refreshJobId, refreshing, API_BASE_URL]);
+
+
+  // --- 4. HELPER FUNCTIONS ---
   const getValue = (obj, targetKey) => {
     if (!obj) return "";
     const key = Object.keys(obj).find(k => k.toLowerCase() === targetKey.toLowerCase());
     return key ? obj[key] : ""; 
   };
 
-  // --- HELPER: Calculate Stats (Solved vs Total) ---
   const getPlatformStats = (student, prefix) => {
     const keys = Object.keys(student).filter(k => k.startsWith(prefix));
     const total = keys.length;
@@ -50,21 +95,94 @@ const ReportPage = () => {
     return { solved, total, keys };
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setRefreshProgress(0);
+    setRefreshText("Starting refresh...");
+    
+    try {
+      const response = await axios.post(`${API_BASE_URL}/refresh-report/${id}`);
+      setRefreshJobId(response.data.job_id);
+    } catch (err) {
+      alert("Failed to start refresh");
+      setRefreshing(false);
+    }
+  };
+
+  const handleDownload = () => {
+    window.open(`${API_BASE_URL}/download-report/${id}`, '_blank');
+  };
+
+  // --- 5. RENDER ---
   if (loading) return <div className="container text-center"><h3>Loading Report...</h3></div>;
   if (error) return <div className="container text-center" style={{color:'red'}}><h3>Error: {error}</h3></div>;
 
   return (
-    <div className="container" style={{ maxWidth: '1200px' }}> {/* Made wider for 9 columns */}
+    <div className="container" style={{ maxWidth: '1200px' }}>
       <h1>Student Report Card</h1>
       
       <div className="card">
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
-            <h3>Report Summary</h3>
-            <span style={{fontWeight:'bold', color:'#007bff', fontSize:'1.1rem'}}>
-                Total Students: {report.total_students}
-            </span>
+            
+            {/* Title & Timestamp */}
+            <div>
+               <h3>Report Summary</h3>
+               {report.last_updated && (
+                  <span style={{fontSize:'0.8rem', color:'#666'}}>
+                    Last Updated: {new Date(report.last_updated).toLocaleString()}
+                  </span>
+               )}
+            </div>
+
+            {/* Buttons */}
+            <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                
+                {refreshing && (
+                  <div style={{textAlign:'right'}}>
+                      <span style={{fontSize:'0.9rem', fontWeight:'bold', color:'#007bff'}}>
+                        {refreshText} ({refreshProgress}%)
+                      </span>
+                      <div style={{width:'150px', height:'4px', background:'#eee', borderRadius:'2px', marginTop:'4px'}}>
+                          <div style={{width:`${refreshProgress}%`, height:'100%', background:'#007bff', transition:'width 0.3s'}}></div>
+                      </div>
+                  </div>
+                )}
+
+                {/* DOWNLOAD BUTTON */}
+                <button 
+                  onClick={handleDownload}
+                  className="view-btn"
+                  style={{
+                    backgroundColor: '#007bff', 
+                    display:'flex', alignItems:'center', gap:'8px',
+                    marginRight: '10px'
+                  }}
+                >
+                  <Download size={18}/> Download Excel
+                </button>
+
+                {/* REFRESH BUTTON */}
+                <button 
+                  onClick={handleRefresh} 
+                  disabled={refreshing}
+                  className="view-btn"
+                  style={{
+                    backgroundColor: refreshing ? '#ccc' : '#28a745',
+                    display:'flex', alignItems:'center', gap:'8px',
+                    cursor: refreshing ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {refreshing ? <Loader2 className="spin" size={18}/> : <RefreshCw size={18}/>}
+                  {refreshing ? "Updating..." : "Refresh Data"}
+                </button>
+
+                <span style={{fontWeight:'bold', color:'#007bff', fontSize:'1.1rem', borderLeft:'2px solid #eee', paddingLeft:'15px'}}>
+                    Total: {report.total_students}
+                </span>
+            </div>
         </div>
         
+        {/* TABLE */}
         <div style={{overflowX: 'auto'}}>
             <table className="report-table">
                 <thead>
@@ -85,12 +203,10 @@ const ReportPage = () => {
                         const studentName = getValue(student, "name") || "Unknown";
                         const rollNumber = getValue(student, "roll number") || getValue(student, "roll-number") || "-";
                         
-                        // Links
                         const cfLink = getValue(student, "codeforces");
                         const lcLink = getValue(student, "leetcode");
                         const ccLink = getValue(student, "codechef");
 
-                        // Stats
                         const cfStats = getPlatformStats(student, "CF:");
                         const lcStats = getPlatformStats(student, "LC:");
                         const ccStats = getPlatformStats(student, "CC:");
@@ -98,16 +214,9 @@ const ReportPage = () => {
 
                         return (
                           <tr key={student.rank}>
-                              {/* 1. RANK */}
                               <td style={{fontWeight:'bold', color:'#888'}}>#{student.rank}</td>
-                              
-                              {/* 2. ROLL NO */}
                               <td style={{fontFamily:'monospace', color:'#555'}}>{rollNumber}</td>
-                              
-                              {/* 3. NAME */}
                               <td style={{fontWeight:'600'}}>{studentName}</td>
-                              
-                              {/* 4. PROFILES (ICONS) */}
                               <td style={{textAlign:'center'}}>
                                   <div style={{display:'flex', gap:'12px', justifyContent:'center'}}>
                                       {lcLink ? (
@@ -130,14 +239,12 @@ const ReportPage = () => {
                                   </div>
                               </td>
 
-                              {/* 5. SCORE (BADGE) */}
                               <td style={{textAlign:'center'}}>
                                   <span className={`badge ${student.Score === totalQs ? 'green' : student.Score > 0 ? 'yellow' : 'red'}`} style={{fontSize:'0.9rem'}}>
                                       {student.Score} / {totalQs}
                                   </span>
                               </td>
 
-                              {/* 6. LEETCODE SUMMARY */}
                               <td style={{textAlign:'center', fontSize:'0.9rem'}}>
                                   {lcStats.total > 0 ? 
                                     <span style={{color: lcStats.solved === lcStats.total ? '#15803d' : '#444'}}>
@@ -146,7 +253,6 @@ const ReportPage = () => {
                                   : <span style={{color:'#ccc'}}>-</span>}
                               </td>
 
-                              {/* 7. CODECHEF SUMMARY */}
                               <td style={{textAlign:'center', fontSize:'0.9rem'}}>
                                   {ccStats.total > 0 ? 
                                     <span style={{color: ccStats.solved === ccStats.total ? '#15803d' : '#444'}}>
@@ -155,7 +261,6 @@ const ReportPage = () => {
                                   : <span style={{color:'#ccc'}}>-</span>}
                               </td>
 
-                              {/* 8. CODEFORCES SUMMARY */}
                               <td style={{textAlign:'center', fontSize:'0.9rem'}}>
                                   {cfStats.total > 0 ? 
                                     <span style={{color: cfStats.solved === cfStats.total ? '#15803d' : '#444'}}>
@@ -164,7 +269,6 @@ const ReportPage = () => {
                                   : <span style={{color:'#ccc'}}>-</span>}
                               </td>
 
-                              {/* 9. ACTION BUTTON */}
                               <td style={{textAlign:'center'}}>
                                   <button 
                                     onClick={() => setSelectedStudent(student)}
@@ -181,7 +285,6 @@ const ReportPage = () => {
         </div>
       </div>
 
-      {/* --- POPUP MODAL (UNCHANGED) --- */}
       {selectedStudent && (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
