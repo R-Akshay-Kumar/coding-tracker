@@ -8,7 +8,7 @@ import os
 import uuid
 import time
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 import pymongo
 from bson import ObjectId
 from urllib.parse import quote_plus
@@ -144,7 +144,7 @@ def process_file_task(job_id: str, filepath: str, cf_problems, lc_problems, cc_p
         if reports_collection is not None:
             print(f"💾 Saving {len(student_results)} records to MongoDB...")
             report_doc = {
-                "created_at": datetime.now(),
+                "created_at": datetime.now(timezone.utc),
                 "total_students": total_students,
                 "data": student_results
             }
@@ -248,7 +248,7 @@ def process_refresh_task(job_id: str, report_id: str):
             {
                 "$set": {
                     "data": updated_results,
-                    "last_updated": datetime.now()
+                    "last_updated": datetime.now(timezone.utc)
                 }
             }
         )
@@ -355,5 +355,6 @@ def download_existing_report(report_id: str):
     except Exception as e:
         print(f"Download Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
