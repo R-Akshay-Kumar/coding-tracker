@@ -129,7 +129,7 @@ const ReportPage = () => {
                <h3>Report Summary</h3>
                {report.last_updated && (
                   <span style={{fontSize:'0.8rem', color:'#666'}}>
-                    Last Updated: {new Date(report.last_updated).toLocaleString()}
+                    Last Updated: {new Date(report.last_updated + (report.last_updated.includes("Z") || report.last_updated.includes("+") ? "" : "Z")).toLocaleString()}
                   </span>
                )}
             </div>
