@@ -148,19 +148,6 @@ const ReportPage = () => {
                   </div>
                 )}
 
-                {/* DOWNLOAD BUTTON */}
-                <button 
-                  onClick={handleDownload}
-                  className="view-btn"
-                  style={{
-                    backgroundColor: '#007bff', 
-                    display:'flex', alignItems:'center', gap:'8px',
-                    marginRight: '10px'
-                  }}
-                >
-                  <Download size={18}/> Download Excel
-                </button>
-
                 {/* REFRESH BUTTON */}
                 <button 
                   onClick={handleRefresh} 
@@ -174,6 +161,19 @@ const ReportPage = () => {
                 >
                   {refreshing ? <Loader2 className="spin" size={18}/> : <RefreshCw size={18}/>}
                   {refreshing ? "Updating..." : "Refresh Data"}
+                </button>
+              
+                {/* DOWNLOAD BUTTON */}
+                <button 
+                  onClick={handleDownload}
+                  className="view-btn"
+                  style={{
+                    backgroundColor: '#007bff', 
+                    display:'flex', alignItems:'center', gap:'8px',
+                    marginRight: '10px'
+                  }}
+                >
+                  <Download size={18}/> Download Excel
                 </button>
 
                 <span style={{fontWeight:'bold', color:'#007bff', fontSize:'1.1rem', borderLeft:'2px solid #eee', paddingLeft:'15px'}}>
