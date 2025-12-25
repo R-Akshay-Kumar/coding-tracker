@@ -7,7 +7,7 @@ def check_leetcode_status(username, problem_slug):
     # GraphQL Query: Fetch recent successful submissions
     query = """
     query recentAcSubmissionList($username: String!) {
-      recentAcSubmissionList(username: $username, limit: 20) {
+      recentAcSubmissionList(username: $username, limit: 100) {
         titleSlug
         timestamp
       }
@@ -38,4 +38,5 @@ def check_leetcode_status(username, problem_slug):
         return "Not Solved"
 
     except Exception as e:
+
         return f"Error: {e}"
